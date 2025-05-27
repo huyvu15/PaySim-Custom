@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 import org.paysim.paysim.output.Output;
+import org.paysim.paysim.services.FraudDetectionService;
 
 public class Transaction implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -62,6 +63,9 @@ public class Transaction implements Serializable {
         this.fraudScenario = fraudScenario;
         this.aiAlert = aiAlert;
         this.externalBlacklist = externalBlacklist;
+        
+        // Apply comprehensive business logic after construction
+        applyAdvancedFraudDetectionLogic();
     }
 
     public Transaction(int step, String action, double amount, String nameOrig, double oldBalanceOrig,
@@ -188,5 +192,116 @@ public class Transaction implements Serializable {
         properties.add(externalBlacklist);
 
         return String.join(Output.OUTPUT_SEPARATOR, properties);
+    }
+
+    public boolean isUnauthorizedOverdraft() { return isUnauthorizedOverdraft; }
+
+    // Enhanced business logic methods using FraudDetectionService
+    private void applyAdvancedFraudDetectionLogic() {
+        // 1. Detect unauthorized overdraft with advanced logic
+        this.isUnauthorizedOverdraft = detectAdvancedUnauthorizedOverdraft();
+        
+        // 2. Use FraudDetectionService for comprehensive fraud detection
+        boolean fraudDetected = FraudDetectionService.detectFraud(this);
+        if (fraudDetected && !this.isFraud) {
+            this.isFraud = true;
+        }
+        
+        // 3. AI-based fraud detection with risk scoring
+        boolean aiDetectedFraud = FraudDetectionService.detectFraud(this);
+        this.aiAlert = aiDetectedFraud ? "1" : "0";
+        
+        // 4. External blacklist check using service
+        boolean isBlacklisted = FraudDetectionService.isBlacklisted(this);
+        this.externalBlacklist = isBlacklisted ? "1" : "0";
+        
+        // 5. Determine comprehensive fraud scenario
+        this.fraudScenario = FraudDetectionService.determineFraudScenario(this);
+        
+        // 6. Apply additional business rules
+        applyAdditionalBusinessRules();
+    }
+
+    private boolean detectAdvancedUnauthorizedOverdraft() {
+        // Enhanced overdraft detection logic
+        boolean hasOverdraft = newBalanceOrig < 0 && oldBalanceOrig >= 0;
+        
+        if (!hasOverdraft) return false;
+        
+        // Business rules for authorized overdraft
+        boolean isHighKyc = "3".equals(kycLevel);
+        boolean isBusinessAccount = "business".equals(accountType) || "premium".equals(accountType);
+        boolean isSmallAmount = amount < 50000; // Small amounts may be auto-authorized
+        
+        // Overdraft is authorized if high KYC + business account OR small amount
+        boolean isAuthorized = (isHighKyc && isBusinessAccount) || isSmallAmount;
+        
+        return !isAuthorized;
+    }
+
+    private void applyAdditionalBusinessRules() {
+        // Flag suspicious patterns
+        if (isSuspiciousPattern()) {
+            this.isFlaggedFraud = true;
+        }
+        
+        // Cross-validate fraud indicators
+        if (isMultipleFraudIndicators()) {
+            this.isFraud = true;
+            this.aiAlert = "1";
+        }
+    }
+
+    private boolean isSuspiciousPattern() {
+        // Check for suspicious transaction patterns
+        boolean isRoundAmount = amount % 1000 == 0 && amount > 50000;
+        boolean isCashOutToEmpty = "CASH_OUT".equals(action) && newBalanceDest == 0 && oldBalanceDest == 0;
+        boolean isCompleteTransfer = "TRANSFER".equals(action) && newBalanceOrig == 0 && oldBalanceOrig > 100000;
+        boolean isHighRiskCountry = isHighRiskCountry(country);
+        boolean isUnusualTime = isUnusualTransactionTime();
+        
+        // Flag if multiple suspicious indicators
+        int suspiciousCount = 0;
+        if (isRoundAmount) suspiciousCount++;
+        if (isCashOutToEmpty) suspiciousCount++;
+        if (isCompleteTransfer) suspiciousCount++;
+        if (isHighRiskCountry) suspiciousCount++;
+        if (isUnusualTime) suspiciousCount++;
+        
+        return suspiciousCount >= 2;
+    }
+
+    private boolean isMultipleFraudIndicators() {
+        // Check if multiple fraud indicators are present
+        int fraudScore = 0;
+        
+        if (isUnauthorizedOverdraft) fraudScore += 2;
+        if ("1".equals(aiAlert)) fraudScore += 2;
+        if ("1".equals(externalBlacklist)) fraudScore += 3;
+        if (amount > 1000000) fraudScore += 2;
+        if (isHighRiskCountry(country)) fraudScore += 1;
+        if (isUnusualTransactionTime()) fraudScore += 1;
+        
+        return fraudScore >= 4;
+    }
+
+    private boolean isHighRiskCountry(String country) {
+        String[] highRiskCountries = {"XX", "YY", "ZZ"};
+        for (String riskCountry : highRiskCountries) {
+            if (riskCountry.equals(country)) return true;
+        }
+        return false;
+    }
+
+    private boolean isUnusualTransactionTime() {
+        try {
+            long timestamp = Long.parseLong(loginTime);
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.setTimeInMillis(timestamp);
+            int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
+            return hour < 6 || hour > 22; // Unusual if between 10 PM and 6 AM
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

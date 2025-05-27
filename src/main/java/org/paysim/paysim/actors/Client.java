@@ -212,42 +212,56 @@ public class Client extends SuperActor implements Steppable {
     }
 
     private static String randomIp(java.util.Random rand) {
-        return rand.nextInt(256) + "." + rand.nextInt(256) + "." + rand.nextInt(256) + "." + rand.nextInt(256);
+        // Generate more realistic IP patterns
+        String[] commonRanges = {"192.168.", "10.0.", "172.16.", "203.113.", "125.234."};
+        String base = commonRanges[rand.nextInt(commonRanges.length)];
+        return base + rand.nextInt(256) + "." + rand.nextInt(256);
     }
     private static String randomDevice(java.util.Random rand) {
-        String[] arr = {"Mobile", "Desktop", "Tablet"}; return arr[rand.nextInt(arr.length)];
+        String[] devices = {"Mobile", "Desktop", "Tablet", "SmartTV"};
+        return devices[rand.nextInt(devices.length)];
     }
     private static String randomBrowser(java.util.Random rand) {
-        String[] arr = {"Chrome", "Firefox", "Edge", "Safari"}; return arr[rand.nextInt(arr.length)];
+        String[] browsers = {"Chrome", "Firefox", "Edge", "Safari", "Opera"};
+        return browsers[rand.nextInt(browsers.length)];
     }
     private static String randomCountry(java.util.Random rand) {
-        String[] arr = {"US", "VN", "JP", "UK", "DE", "FR"}; return arr[rand.nextInt(arr.length)];
+        String[] countries = {"VN", "US", "JP", "SG", "TH", "MY", "ID", "PH"};
+        return countries[rand.nextInt(countries.length)];
     }
     private static String randomGeo(java.util.Random rand) {
-        double lat = -90 + 180 * rand.nextDouble(); double lon = -180 + 360 * rand.nextDouble();
+        // Vietnam coordinates range
+        double lat = 8.0 + (24.0 - 8.0) * rand.nextDouble(); // Vietnam latitude range
+        double lon = 102.0 + (110.0 - 102.0) * rand.nextDouble(); // Vietnam longitude range
         return String.format("%.6f,%.6f", lat, lon);
     }
     private static String randomSessionId(java.util.Random rand) {
-        return Integer.toHexString(rand.nextInt()) + Integer.toHexString(rand.nextInt());
+        return "SES" + System.currentTimeMillis() + String.format("%04d", rand.nextInt(10000));
     }
     private static String randomLoginTime(java.util.Random rand) {
         long now = System.currentTimeMillis();
-        return String.valueOf(now - rand.nextInt(10000000));
+        long randomOffset = rand.nextInt(86400000); // Random within last 24 hours
+        return String.valueOf(now - randomOffset);
     }
     private static String randomAccountType(java.util.Random rand) {
-        String[] arr = {"personal", "business"}; return arr[rand.nextInt(arr.length)];
+        String[] types = {"personal", "business", "premium"};
+        return types[rand.nextInt(types.length)];
     }
     private static String randomKycLevel(java.util.Random rand) {
-        String[] arr = {"1", "2", "3"}; return arr[rand.nextInt(arr.length)];
+        String[] levels = {"1", "2", "3"}; // 1=basic, 2=standard, 3=premium
+        return levels[rand.nextInt(levels.length)];
     }
     private static String randomFraudScenario(java.util.Random rand) {
-        String[] arr = {"0", "1"}; return arr[rand.nextInt(arr.length)];
+        // Initial scenario, will be updated by business logic
+        return "NORMAL";
     }
     private static String randomAiAlert(java.util.Random rand) {
-        String[] arr = {"0", "1"}; return arr[rand.nextInt(arr.length)];
+        // Initial value, will be updated by AI detection logic
+        return "0";
     }
     private static String randomExternalBlacklist(java.util.Random rand) {
-        String[] arr = {"0", "1"}; return arr[rand.nextInt(arr.length)];
+        // Initial value, will be updated by blacklist check
+        return "0";
     }
 
     protected void handleCashIn(PaySim paysim, int step, double amount) {
